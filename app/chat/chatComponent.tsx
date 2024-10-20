@@ -24,10 +24,46 @@ export default function ChatComponent() {
 
   const handleSendMessage = () => {
     if (inputMessage.trim() !== "") {
-      setMessages([...messages, { sender: "user", content: inputMessage }]);
+      const userMessage = inputMessage.trim();
+      setMessages([...messages, { sender: "user", content: userMessage }]);
       setInputMessage("");
 
-      // ここで実際のチャットボットの応答を処理します
+      // 自分のAPIルートにリクエストを送信
+      fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: userMessage }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log(data);
+          // レスポンスからMarkdownを取得して状態を更新
+          if (data.markdown) {
+            setMarkdownContent(data.markdown);
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                sender: "bot",
+                content:
+                  "マークダウンを生成しました。右側のプレビューを確認してください。",
+              },
+            ]);
+          } else {
+            throw new Error("Markdownがレスポンスに含まれていません。");
+          }
+        })
+        .catch((error) => {
+          console.error("エラー:", error);
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              sender: "bot",
+              content: "エラーが発生しました。もう一度お試しください。",
+            },
+          ]);
+        });
     }
   };
 
@@ -180,9 +216,11 @@ export default function ChatComponent() {
             />
           ) : (
             <div className="h-full border rounded-lg p-4 overflow-y-auto bg-white markdown-preview">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {markdownContent}
-              </ReactMarkdown>
+              <div className="prose">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {markdownContent}
+                </ReactMarkdown>
+              </div>
             </div>
           )}
         </div>
