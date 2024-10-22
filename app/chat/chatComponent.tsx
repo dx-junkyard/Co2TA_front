@@ -29,23 +29,28 @@ export default function ChatComponent() {
       setInputMessage("");
 
       if (
-        userMessage.includes("運営・管理者名を「from Chofu」に変更して下さい。")
+        userMessage.includes("運営") ||
+        userMessage.includes("管理") ||
+        userMessage.includes("変更")
       ) {
-        setMarkdownContent(
-          markdownContent.replace(
-            /プログラム型運営・管理者名：フィード・ワン株式会社（フリガナ）フィード・ワンカブシキカイシャ/g,
-            "プログラム型運営・管理者名：from Chofu"
-          )
-        );
+        const match = userMessage.match(/「(.*?)」/);
+        if (match) {
+          const newName = match[1];
+          const updatedMarkdown = markdownContent.replace(
+            /プログラム型運営・管理者名：.*?(?=\n)/,
+            `プログラム型運営・管理者名：${newName}\n`
+          );
+          setMarkdownContent(updatedMarkdown);
 
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            sender: "bot",
-            content:
-              "該当の箇所を修正しました。右側のプレビューを確認してください",
-          },
-        ]);
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              sender: "bot",
+              content:
+                "該当の箇所を修正しました。右側のプレビューを確認してください",
+            },
+          ]);
+        }
       } else {
         // 自分のAPIルートにリクエストを送信
         fetch("/api/chat", {
@@ -57,25 +62,13 @@ export default function ChatComponent() {
         })
           .then((response) => response.json())
           .then((data) => {
-            let cleanedMarkdown = data.markdown
+            const cleanedMarkdown = data.markdown
               .replace(/^```markdown\s*/, "")
               .replace(/```$/, "");
 
-            let botMessageContent =
+            const botMessageContent =
               "該当するプロジェクトが見つかりました。右側のプレビューを確認してください";
 
-            if (
-              userMessage.includes(
-                "運営・管理者名を「from Chofu」に変更して下さい。"
-              )
-            ) {
-              cleanedMarkdown = cleanedMarkdown.replace(
-                /フィード・ワン株式会社|フィード・ワンカブシキカイシャ/g,
-                "from Chofu"
-              );
-              botMessageContent =
-                "該当の箇所を修正しました。右側のプレビューを確認してください";
-            }
             if (cleanedMarkdown) {
               setMarkdownContent(cleanedMarkdown);
               setMessages((prevMessages) => [
