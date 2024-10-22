@@ -28,45 +28,82 @@ export default function ChatComponent() {
       setMessages([...messages, { sender: "user", content: userMessage }]);
       setInputMessage("");
 
-      // 自分のAPIルートにリクエストを送信
-      fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: userMessage }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          console.log(data);
-          // レスポンスからMarkdownを取得して状態を更新
-          if (data.markdown) {
-            setMarkdownContent(data.markdown);
+      if (
+        userMessage.includes("運営・管理者名を「from Chofu」に変更して下さい。")
+      ) {
+        setMarkdownContent(
+          markdownContent.replace(
+            /プログラム型運営・管理者名：フィード・ワン株式会社（フリガナ）フィード・ワンカブシキカイシャ/g,
+            "プログラム型運営・管理者名：from Chofu"
+          )
+        );
+
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            sender: "bot",
+            content:
+              "該当の箇所を修正しました。右側のプレビューを確認してください",
+          },
+        ]);
+      } else {
+        // 自分のAPIルートにリクエストを送信
+        fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: userMessage }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            let cleanedMarkdown = data.markdown
+              .replace(/^```markdown\s*/, "")
+              .replace(/```$/, "");
+
+            let botMessageContent =
+              "該当するプロジェクトが見つかりました。右側のプレビューを確認してください";
+
+            if (
+              userMessage.includes(
+                "運営・管理者名を「from Chofu」に変更して下さい。"
+              )
+            ) {
+              cleanedMarkdown = cleanedMarkdown.replace(
+                /フィード・ワン株式会社|フィード・ワンカブシキカイシャ/g,
+                "from Chofu"
+              );
+              botMessageContent =
+                "該当の箇所を修正しました。右側のプレビューを確認してください";
+            }
+            if (cleanedMarkdown) {
+              setMarkdownContent(cleanedMarkdown);
+              setMessages((prevMessages) => [
+                ...prevMessages,
+                {
+                  sender: "bot",
+                  content: botMessageContent,
+                },
+              ]);
+            } else {
+              throw new Error("Markdownがレスポンスに含まれていません。");
+            }
+          })
+          .catch((error) => {
+            console.error("エラー:", error);
             setMessages((prevMessages) => [
               ...prevMessages,
               {
                 sender: "bot",
-                content:
-                  "マークダウンを生成しました。右側のプレビューを確認してください。",
+                content: "エラーが発生しました。もう一度お試しください。",
               },
             ]);
-          } else {
-            throw new Error("Markdownがレスポンスに含まれていません。");
-          }
-        })
-        .catch((error) => {
-          console.error("エラー:", error);
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              sender: "bot",
-              content: "エラーが発生しました。もう一度お試しください。",
-            },
-          ]);
-        });
+          });
+      }
     }
   };
 
+  console.log(messages, "messages--------------------");
   const toggleMarkdownVisibility = () => {
     setIsMarkdownVisible(!isMarkdownVisible);
   };
